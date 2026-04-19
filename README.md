@@ -36,14 +36,16 @@ Add your deployed app link here after deployment.
 
 ## Project Structure
 
+```
 SoundSense-AI/
 │
-├── app/ # Streamlit application
-├── src/ # Core logic (recommender, preprocessing, helpers)
-├── data/ # Processed dataset
-├── outputs/ # Saved models (optional)
-├── requirements.txt # Dependencies
+├── app/                 # Streamlit application
+├── src/                 # Core logic (recommender, preprocessing, helpers)
+├── data/                # Processed dataset
+├── outputs/             # Saved models (optional)
+├── requirements.txt     # Dependencies
 └── README.md
+```
 
 ---
 
