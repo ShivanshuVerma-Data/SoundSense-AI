@@ -5,7 +5,7 @@ import streamlit as st
 from rapidfuzz import process
 
 # -----------------------------
-# Fix imports
+# Fix imports (important for Streamlit Cloud)
 # -----------------------------
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC_PATH = os.path.join(BASE_DIR, "src")
@@ -14,7 +14,6 @@ sys.path.append(SRC_PATH)
 from recommender import recommend
 from explain import explain_recommendation
 from spotify_helper import search_track
-
 
 # -----------------------------
 # Load data (cached)
@@ -25,32 +24,37 @@ def load_data():
 
 df = load_data()
 
-
 # -----------------------------
-# Cache Spotify calls
+# Cache Spotify API calls
 # -----------------------------
 @st.cache_data
 def get_track_assets(name, artist):
     return search_track(name, artist)
 
+# -----------------------------
+# Page Config
+# -----------------------------
+st.set_page_config(
+    page_title="SoundSense AI",
+    page_icon="🎧",
+    layout="wide"
+)
 
 # -----------------------------
-# UI Config
-# -----------------------------
-st.set_page_config(page_title="SoundSense AI", layout="wide")
-
-
-# -----------------------------
-# Custom CSS
+# Custom UI Styling
 # -----------------------------
 st.markdown("""
 <style>
-.main {
+body {
     background-color: #0e1117;
 }
 
+.block-container {
+    padding-top: 2rem;
+}
+
 .title {
-    font-size: 42px;
+    font-size: 48px;
     font-weight: 700;
     color: #ffffff;
 }
@@ -61,17 +65,28 @@ st.markdown("""
     margin-bottom: 30px;
 }
 
+.section-title {
+    font-size: 24px;
+    font-weight: 600;
+    margin-top: 30px;
+    margin-bottom: 10px;
+}
+
 .card {
-    background-color: #1c1f26;
-    padding: 16px;
+    background: #1c1f26;
+    padding: 15px;
     border-radius: 12px;
-    margin-bottom: 20px;
+    margin-bottom: 15px;
+    transition: 0.2s ease-in-out;
+}
+
+.card:hover {
+    background: #2a2f3a;
 }
 
 .song-title {
     font-size: 18px;
     font-weight: 600;
-    color: #ffffff;
 }
 
 .song-artist {
@@ -79,30 +94,33 @@ st.markdown("""
     color: #9ca3af;
 }
 
-.section {
-    margin-top: 30px;
-    margin-bottom: 10px;
-    font-size: 22px;
-    font-weight: 600;
+.center {
+    text-align: center;
 }
 </style>
 """, unsafe_allow_html=True)
-
 
 # -----------------------------
 # Header
 # -----------------------------
 st.markdown('<div class="title">SoundSense AI</div>', unsafe_allow_html=True)
-st.markdown('<div class="subtitle">Smart Music Recommendation System</div>', unsafe_allow_html=True)
+st.markdown('<div class="subtitle">Discover music based on mood, vibe, and similarity</div>', unsafe_allow_html=True)
 
+st.divider()
 
 # -----------------------------
-# Search
+# Centered Search
 # -----------------------------
-query = st.text_input("Search for a song")
+col1, col2, col3 = st.columns([1, 2, 1])
+
+with col2:
+    query = st.text_input("Search for a song", placeholder="Try: Sukoon Mila")
 
 selected_song = None
 
+# -----------------------------
+# Search Logic
+# -----------------------------
 if query:
     results = process.extract(query, df["track_name"].tolist(), limit=5)
     indices = [r[2] for r in results]
@@ -116,60 +134,74 @@ if query:
     choice = st.selectbox("Select a song", options)
     selected_song = matches.iloc[options.index(choice)]
 
-
 # -----------------------------
-# Display selected + recommend
+# Selected Song Section
 # -----------------------------
 if selected_song is not None:
 
-    st.markdown('<div class="section">Selected Song</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">Selected Song</div>', unsafe_allow_html=True)
+
+    col1, col2 = st.columns([1, 2])
 
     image, preview = get_track_assets(
         selected_song["track_name"],
         selected_song["artists"]
     )
 
-    st.markdown(f"""
-    <div class="card">
-        <div class="song-title">{selected_song['track_name']}</div>
-        <div class="song-artist">{selected_song['artists']}</div>
-    </div>
-    """, unsafe_allow_html=True)
+    with col1:
+        if image:
+            st.image(image, use_container_width=True)
 
-    if image:
-        st.image(image, width=300)
+    with col2:
+        st.markdown(f"""
+        <div class="card">
+            <div class="song-title">{selected_song['track_name']}</div>
+            <div class="song-artist">{selected_song['artists']}</div>
+        </div>
+        """, unsafe_allow_html=True)
 
-    if preview:
-        st.audio(preview)
+        if preview:
+            st.audio(preview)
 
-    # -----------------------------
-    # Recommendations
-    # -----------------------------
+# -----------------------------
+# Recommendations Section
+# -----------------------------
+    st.markdown('<div class="section-title">Recommended Songs</div>', unsafe_allow_html=True)
+
     recs = recommend(selected_song.to_dict(), df)
 
-    st.markdown('<div class="section">Recommended Songs</div>', unsafe_allow_html=True)
+    cols = st.columns(3)
 
-    for _, row in recs.iterrows():
-
+    for i, (_, row) in enumerate(recs.iterrows()):
         image, preview = get_track_assets(
             row["track_name"],
             row["artists"]
         )
 
-        st.markdown(f"""
-        <div class="card">
-            <div class="song-title">{row['track_name']}</div>
-            <div class="song-artist">{row['artists']}</div>
-        </div>
-        """, unsafe_allow_html=True)
+        with cols[i % 3]:
+            if image:
+                st.image(image, use_container_width=True)
 
-        if image:
-            st.image(image, width=250)
+            st.markdown(f"""
+            <div class="card">
+                <div class="song-title">{row['track_name']}</div>
+                <div class="song-artist">{row['artists']}</div>
+            </div>
+            """, unsafe_allow_html=True)
 
-        if preview:
-            st.audio(preview)
+            if preview:
+                st.audio(preview)
 
-        reasons = explain_recommendation(selected_song, row)
+            reasons = explain_recommendation(selected_song, row)
 
-        for r in reasons:
-            st.write(f"- {r}")
+            for r in reasons:
+                st.caption(f"• {r}")
+
+# -----------------------------
+# Footer
+# -----------------------------
+st.divider()
+st.markdown(
+    '<div class="center">Built with Machine Learning • SoundSense AI</div>',
+    unsafe_allow_html=True
+)
