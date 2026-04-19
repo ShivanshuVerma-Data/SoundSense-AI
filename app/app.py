@@ -5,7 +5,7 @@ import streamlit as st
 from rapidfuzz import process
 
 # -----------------------------
-# Fix imports (important for Streamlit Cloud)
+# Imports
 # -----------------------------
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC_PATH = os.path.join(BASE_DIR, "src")
@@ -16,7 +16,7 @@ from explain import explain_recommendation
 from spotify_helper import search_track
 
 # -----------------------------
-# Load data (cached)
+# Load data
 # -----------------------------
 @st.cache_data
 def load_data():
@@ -25,78 +25,91 @@ def load_data():
 df = load_data()
 
 # -----------------------------
-# Cache Spotify API calls
+# Spotify cache
 # -----------------------------
 @st.cache_data
 def get_track_assets(name, artist):
     return search_track(name, artist)
 
 # -----------------------------
-# Page Config
+# Page config
 # -----------------------------
-st.set_page_config(
-    page_title="SoundSense AI",
-    page_icon="🎧",
-    layout="wide"
-)
+st.set_page_config(page_title="SoundSense AI", layout="wide")
 
 # -----------------------------
-# Custom UI Styling
+# PREMIUM CSS
 # -----------------------------
 st.markdown("""
 <style>
-body {
-    background-color: #0e1117;
-}
 
+/* Global */
 .block-container {
     padding-top: 2rem;
+    max-width: 1100px;
 }
 
+/* Title */
 .title {
-    font-size: 48px;
+    font-size: 46px;
     font-weight: 700;
-    color: #ffffff;
+    text-align: center;
 }
 
 .subtitle {
-    font-size: 16px;
+    text-align: center;
     color: #9ca3af;
     margin-bottom: 30px;
 }
 
+/* Section */
 .section-title {
-    font-size: 24px;
+    font-size: 20px;
     font-weight: 600;
-    margin-top: 30px;
-    margin-bottom: 10px;
+    margin-top: 40px;
+    margin-bottom: 15px;
 }
 
+/* Cards */
 .card {
-    background: #1c1f26;
-    padding: 15px;
-    border-radius: 12px;
-    margin-bottom: 15px;
-    transition: 0.2s ease-in-out;
+    background: #15181f;
+    padding: 16px;
+    border-radius: 14px;
+    transition: all 0.2s ease;
+    border: 1px solid rgba(255,255,255,0.05);
 }
 
 .card:hover {
-    background: #2a2f3a;
+    transform: translateY(-4px);
+    border: 1px solid rgba(255,255,255,0.1);
 }
 
+/* Selected song highlight */
+.now-playing {
+    background: linear-gradient(135deg, #1f2937, #111827);
+    border: 1px solid rgba(255,255,255,0.1);
+    padding: 20px;
+    border-radius: 16px;
+}
+
+/* Text */
 .song-title {
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 600;
 }
 
 .song-artist {
-    font-size: 14px;
+    font-size: 13px;
     color: #9ca3af;
 }
 
-.center {
+/* Footer */
+.footer {
     text-align: center;
+    color: #6b7280;
+    margin-top: 40px;
+    font-size: 13px;
 }
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -106,20 +119,18 @@ body {
 st.markdown('<div class="title">SoundSense AI</div>', unsafe_allow_html=True)
 st.markdown('<div class="subtitle">Discover music based on mood, vibe, and similarity</div>', unsafe_allow_html=True)
 
-st.divider()
-
 # -----------------------------
-# Centered Search
+# Search (centered)
 # -----------------------------
 col1, col2, col3 = st.columns([1, 2, 1])
 
 with col2:
-    query = st.text_input("Search for a song", placeholder="Try: Sukoon Mila")
+    query = st.text_input("", placeholder="Search for a song...")
 
 selected_song = None
 
 # -----------------------------
-# Search Logic
+# Search logic
 # -----------------------------
 if query:
     results = process.extract(query, df["track_name"].tolist(), limit=5)
@@ -135,11 +146,11 @@ if query:
     selected_song = matches.iloc[options.index(choice)]
 
 # -----------------------------
-# Selected Song Section
+# Selected song
 # -----------------------------
 if selected_song is not None:
 
-    st.markdown('<div class="section-title">Selected Song</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">Now Playing</div>', unsafe_allow_html=True)
 
     col1, col2 = st.columns([1, 2])
 
@@ -154,9 +165,13 @@ if selected_song is not None:
 
     with col2:
         st.markdown(f"""
-        <div class="card">
-            <div class="song-title">{selected_song['track_name']}</div>
-            <div class="song-artist">{selected_song['artists']}</div>
+        <div class="now-playing">
+            <div class="song-title" style="font-size:22px;">
+                {selected_song['track_name']}
+            </div>
+            <div class="song-artist">
+                {selected_song['artists']}
+            </div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -164,44 +179,44 @@ if selected_song is not None:
             st.audio(preview)
 
 # -----------------------------
-# Recommendations Section
+# Recommendations
 # -----------------------------
-    st.markdown('<div class="section-title">Recommended Songs</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">Recommended for You</div>', unsafe_allow_html=True)
 
     recs = recommend(selected_song.to_dict(), df)
 
-    cols = st.columns(3)
+    for i in range(0, len(recs), 3):
+        cols = st.columns(3)
 
-    for i, (_, row) in enumerate(recs.iterrows()):
-        image, preview = get_track_assets(
-            row["track_name"],
-            row["artists"]
-        )
+        for j in range(3):
+            if i + j >= len(recs):
+                break
 
-        with cols[i % 3]:
-            if image:
-                st.image(image, use_container_width=True)
+            row = recs.iloc[i + j]
 
-            st.markdown(f"""
-            <div class="card">
-                <div class="song-title">{row['track_name']}</div>
-                <div class="song-artist">{row['artists']}</div>
-            </div>
-            """, unsafe_allow_html=True)
+            image, preview = get_track_assets(
+                row["track_name"],
+                row["artists"]
+            )
 
-            if preview:
-                st.audio(preview)
+            with cols[j]:
+                if image:
+                    st.image(image, use_container_width=True)
 
-            reasons = explain_recommendation(selected_song, row)
+                st.markdown(f"""
+                <div class="card">
+                    <div class="song-title">{row['track_name']}</div>
+                    <div class="song-artist">{row['artists']}</div>
+                </div>
+                """, unsafe_allow_html=True)
 
-            for r in reasons:
-                st.caption(f"• {r}")
+                if preview:
+                    st.audio(preview)
 
 # -----------------------------
 # Footer
 # -----------------------------
-st.divider()
 st.markdown(
-    '<div class="center">Built with Machine Learning • SoundSense AI</div>',
+    '<div class="footer">SoundSense AI • Smart music recommendations</div>',
     unsafe_allow_html=True
 )
