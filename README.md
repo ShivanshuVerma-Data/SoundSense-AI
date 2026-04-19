@@ -6,7 +6,7 @@ SoundSense AI is an intelligent music recommendation system that suggests songs 
 
 ## Live Demo
 
-Add your deployed app link here after deployment.
+(https://soundsense-ai-4kbks7dxx5kzfgaaegp7gt.streamlit.app/)
 
 ---
 
