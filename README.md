@@ -98,10 +98,13 @@ Applies diversity (MMR) to avoid repetitive recommendations
 ---
 
 ## Future Improvements
+```
 
 User personalization and listening history
 Playlist generation
 Enhanced mood detection using NLP
 Mobile-optimized interface
+
+```
 
 ---
